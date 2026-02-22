@@ -1,0 +1,31 @@
+# Variáveis de ambiente e segredos (NUNCA commitar)
+.env
+.streamlit/secrets.toml
+
+# Ambiente virtual
+venv/
+.venv/
+env/
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+
+# Jupyter
+.ipynb_checkpoints/
+*.ipynb_checkpoints
+
+# Arquivos gerados
+app_backup_from_notebook.py
+dados_tratados.csv
+
+# PDFs e textos internos
+*.pdf
+*.txt
+
+# OS
+.DS_Store
+Thumbs.db
