@@ -25,6 +25,7 @@ dados_tratados.csv
 # PDFs e textos internos
 *.pdf
 *.txt
+!requirements.txt
 
 # OS
 .DS_Store
