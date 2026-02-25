@@ -281,42 +281,63 @@ periodo_texto = (
     else 'Período não identificado'
 )
 
-top_categorias = (
-    f['categoria_produto']
-    .fillna('Sem categoria')
-    .str.split(' / ')
-    .explode()
-    .value_counts()
+# Vendas por ano
+vendas_ano = (
+    f.groupby(f['data_emissao'].dt.year, as_index=True)['valor_total']
+    .sum()
+    .sort_index()
+)
+vendas_ano_texto = '; '.join([f"{int(ano)}: {format_currency_full(val)}" for ano, val in vendas_ano.items()])
+
+# Top categorias com valor
+top_categorias_val = (
+    f[['categoria_produto', 'valor_total', 'lucro']]
+    .assign(categoria_produto=f['categoria_produto'].fillna('Sem categoria'))
+    .assign(categoria_produto=lambda d: d['categoria_produto'].str.split(' / '))
+    .explode('categoria_produto')
+    .groupby('categoria_produto', as_index=False)
+    .agg(valor_total=('valor_total', 'sum'), lucro=('lucro', 'sum'))
+    .sort_values('valor_total', ascending=False)
     .head(10)
 )
-categorias_texto = ', '.join(top_categorias.index.tolist()) if len(top_categorias) else 'Sem categorias encontradas.'
+categorias_texto = '; '.join([
+    f"{row['categoria_produto']}: vendas={format_currency_full(row['valor_total'])}, lucro={format_currency_full(row['lucro'])}"
+    for _, row in top_categorias_val.iterrows()
+]) if len(top_categorias_val) else 'Sem categorias encontradas.'
 
-top_ufs = (
-    f['uf']
-    .fillna('NI')
-    .value_counts()
+# Top UFs com inadimplência
+top_ufs_val = (
+    f.groupby('uf', as_index=False)
+    .agg(valor_total=('valor_total', 'sum'), inad=('valor_inadimplente', 'sum'))
+    .assign(taxa_inad=lambda d: d['inad'] / d['valor_total'].where(d['valor_total'] != 0, 1))
+    .sort_values('valor_total', ascending=False)
     .head(10)
 )
-ufs_texto = ', '.join(top_ufs.index.tolist()) if len(top_ufs) else 'Sem UFs encontradas.'
+ufs_texto = '; '.join([
+    f"{row['uf']}: vendas={format_currency_full(row['valor_total'])}, inadimplência={row['taxa_inad']:.1%}"
+    for _, row in top_ufs_val.iterrows()
+]) if len(top_ufs_val) else 'Sem UFs encontradas.'
 
+# Top vendedores com valores
 vendedores_top = (
     f.groupby('nome_vendedor', dropna=True)['valor_total']
     .sum()
     .sort_values(ascending=False)
     .head(20)
 )
-vendedores_lista = [v for v in vendedores_top.index.tolist() if str(v).strip()]
-vendedores_texto = ', '.join(vendedores_lista) if vendedores_lista else 'Sem vendedores encontrados.'
+vendedores_lista = [f"{v}: {format_currency_full(val)}" for v, val in vendedores_top.items() if str(v).strip()]
+vendedores_texto = '; '.join(vendedores_lista) if vendedores_lista else 'Sem vendedores encontrados.'
 total_vendedores = f['nome_vendedor'].nunique(dropna=True)
 
 contexto_chat = (
     f"{resumo_numerico_ia}\n"
     f"Total de notas fiscais: {total_notas}\n"
     f"Período dos dados: {periodo_texto}\n"
+    f"Vendas por ano: {vendas_ano_texto}\n"
     f"Total de vendedores únicos: {total_vendedores}\n"
     f"Top vendedores por valor vendido (até 20): {vendedores_texto}\n"
-    f"Categorias mais frequentes (até 10): {categorias_texto}\n"
-    f"UFs mais frequentes (até 10): {ufs_texto}"
+    f"Categorias com vendas e lucro (até 10): {categorias_texto}\n"
+    f"UFs com vendas e inadimplência (até 10): {ufs_texto}"
 )
 
 st.text_area('Resumo numérico enviado para a IA', value=resumo_numerico_ia, height=110)
