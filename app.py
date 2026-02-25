@@ -489,9 +489,13 @@ g2.plotly_chart(fig_line, width='stretch')
 
 st.markdown('### Análise de Receita: evolução mensal e sazonalidade')
 
+MESES_PT = {1: 'Janeiro', 2: 'Fevereiro', 3: 'Março', 4: 'Abril', 5: 'Maio',
+            6: 'Junho', 7: 'Julho', 8: 'Agosto', 9: 'Setembro', 10: 'Outubro',
+            11: 'Novembro', 12: 'Dezembro'}
+
 receita_mes = f.copy()
 receita_mes['mes_num'] = receita_mes['data_emissao'].dt.month
-receita_mes['mes_nome'] = receita_mes['data_emissao'].dt.month_name(locale='pt_BR') if hasattr(receita_mes['data_emissao'].dt, 'month_name') else receita_mes['mes_num'].astype(str)
+receita_mes['mes_nome'] = receita_mes['mes_num'].map(MESES_PT)
 
 sazonalidade = (
     receita_mes.groupby('mes_num', as_index=False)
