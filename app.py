@@ -415,10 +415,15 @@ if pending_question:
             else:
                 client = Groq(api_key=groq_api_key)
                 system_context = (
-                    'Você é um consultor financeiro sênior. '
-                    'Responda em português, de forma objetiva, usando apenas os dados reais da empresa abaixo. '
-                    'Não invente informações. '
-                    'Se a pergunta não puder ser respondida com esses dados, diga claramente que não há dados suficientes e explique o limite.\n\n'
+                    'Você é um assistente de dados somente leitura da empresa TechVendas.\n'
+                    'Responda em português, de forma objetiva, usando apenas os dados reais da empresa abaixo.\n'
+                    'Não invente informações.\n\n'
+                    'Quando solicitado a gerar SQL, siga OBRIGATORIAMENTE estas regras:\n'
+                    'PERMITIDO: apenas SELECT, WHERE, GROUP BY, ORDER BY, JOIN, LIMIT.\n'
+                    'PROIBIDO: INSERT, UPDATE, DELETE, DROP, ALTER, CREATE, TRUNCATE, DO, EXECUTE, CALL ou qualquer função que modifique dados.\n'
+                    'Use LIMIT 100 obrigatoriamente nas queries SQL.\n'
+                    'Não use ponto e vírgula nas queries SQL.\n'
+                    'Se a pergunta não puder ser respondida com esses dados, diga claramente que não há dados suficientes.\n\n'
                     f'{contexto_chat}'
                 )
                 history = [
