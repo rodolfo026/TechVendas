@@ -257,12 +257,33 @@ total_vendido = f['valor_total'].sum()
 ticket_medio = f['valor_total'].mean() if len(f) else 0
 total_inadimplente = f['valor_inadimplente'].sum()
 taxa_inadimplencia = (total_inadimplente / total_vendido) if total_vendido else 0
+qtd_notas_total = f['id_nota_fiscal'].nunique()
+qtd_notas_inad = f[f['inadimplente'] == 1]['id_nota_fiscal'].nunique()
+taxa_contagem = (qtd_notas_inad / qtd_notas_total) if qtd_notas_total else 0
 
-k1, k2, k3, k4 = st.columns(4)
+k1, k2, k3, k4, k5 = st.columns(5)
 k1.metric('Total Vendido', format_currency_human(total_vendido))
 k2.metric('Ticket Médio', format_currency_human(ticket_medio))
-k3.metric('Saldo Inadimplente', format_currency_human(total_inadimplente))
-k4.metric('Taxa de Inadimplência', f'{taxa_inadimplencia:.2%}')
+k3.metric(
+    'Saldo Inadimplente',
+    format_currency_human(total_inadimplente),
+    help='Valor total de saldos vencidos e ainda em aberto (não pagos até hoje).'
+)
+k4.metric(
+    'Taxa Inad. Monetária',
+    f'{taxa_inadimplencia:.2%}',
+    help='Saldo inadimplente ÷ Total vendido. Mede o impacto financeiro real da inadimplência.'
+)
+k5.metric(
+    'Notas Inadimplentes',
+    f'{taxa_contagem:.2%}',
+    help=f'{qtd_notas_inad:,} de {qtd_notas_total:,} notas fiscais com saldo vencido em aberto.'
+)
+st.caption(
+    f'ℹ️ **Metodologia:** Taxa Monetária = Saldo vencido em aberto ÷ Total vendido. '
+    f'Taxa por Notas = {qtd_notas_inad:,} notas inadimplentes de {qtd_notas_total:,} ({taxa_contagem:.2%}). '
+    f'Uma nota é inadimplente quando seu vencimento já passou e há saldo > R$ 0,01 em aberto.'
+)
 
 st.markdown('### Análise Qualitativa com IA (Groq)')
 resumo_numerico_ia = (
@@ -617,15 +638,32 @@ top_vendedores_view['comissao_2_5'] = top_vendedores_view['comissao_2_5'].apply(
 )
 gx2.dataframe(top_vendedores_view, width='stretch')
 
+st.subheader('Taxa de Inadimplência por UF')
+st.caption(f'Taxa monetária (saldo vencido ÷ total vendido). Linha vermelha tracejada = média geral ({taxa_inadimplencia:.2%}).')
 fig_inad_uf = px.bar(
     inad_uf,
     x='uf',
     y='taxa_inadimplencia',
-    title='Taxa de Inadimplência por UF',
-    text='taxa_inadimplencia'
+    title='Taxa de Inadimplência Monetária por UF',
+    text='taxa_inadimplencia',
+    color='taxa_inadimplencia',
+    color_continuous_scale='Reds',
+    labels={'uf': 'UF', 'taxa_inadimplencia': 'Taxa Inad.'},
 )
-fig_inad_uf.update_traces(texttemplate='%{text:.2%}', textposition='outside')
-fig_inad_uf.update_layout(xaxis_title='UF', yaxis_title='Taxa de inadimplência')
+fig_inad_uf.update_traces(texttemplate='%{text:.1%}', textposition='outside')
+fig_inad_uf.update_layout(
+    xaxis_title='UF',
+    yaxis_title='Taxa de inadimplência',
+    yaxis_tickformat='.0%',
+    coloraxis_showscale=False,
+)
+fig_inad_uf.add_hline(
+    y=taxa_inadimplencia,
+    line_dash='dash',
+    line_color='red',
+    annotation_text=f'Média: {taxa_inadimplencia:.1%}',
+    annotation_position='top right',
+)
 st.plotly_chart(fig_inad_uf, width='stretch')
 
 st.subheader('Risco por UF')
