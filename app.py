@@ -201,12 +201,14 @@ def load_data():
     df['margem_pct'] = (df['lucro'] / df['valor_total']).replace([float('inf'), -float('inf')], 0).fillna(0)
 
     hoje = pd.Timestamp.today().normalize()
+    # Regra: inadimplente se vencimento já passou e saldo_aberto > 0.01
     df['inadimplente'] = (
         (df['data_vencimento'].notna())
-        & (hoje > df['data_vencimento'])
+        & (df['data_vencimento'] < hoje)
         & (df['saldo_aberto'] > 0.01)
     ).astype(int)
 
+    # Valor inadimplente = saldo_aberto apenas se inadimplente
     df['valor_inadimplente'] = df['saldo_aberto'].where(df['inadimplente'] == 1, 0)
     df['ano'] = df['data_emissao'].dt.year
     df['mes'] = df['data_emissao'].dt.to_period('M').astype(str)
@@ -282,7 +284,7 @@ k5.metric(
 st.caption(
     f'ℹ️ **Metodologia:** Taxa Monetária = Saldo vencido em aberto ÷ Total vendido. '
     f'Taxa por Notas = {qtd_notas_inad:,} notas inadimplentes de {qtd_notas_total:,} ({taxa_contagem:.2%}). '
-    f'Uma nota é inadimplente quando seu vencimento já passou e há saldo > R$ 0,01 em aberto.'
+    f'Nota fiscal é considerada inadimplente se a data de vencimento já passou (menor que hoje) e o saldo em aberto é maior que R$ 0,01, conforme metodologia oficial.'
 )
 
 st.markdown('### Análise Qualitativa com IA (Groq)')
