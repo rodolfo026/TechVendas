@@ -251,7 +251,7 @@ def load_official_inad_metrics():
     }
 
 
-st.set_page_config(page_title='Dashboard BI - TechVendas', layout='wide')
+st.set_page_config(page_title='Dashboard BI - TechVendas', layout='wide', initial_sidebar_state='expanded')
 st.image('Logo.png', width=220)
 st.title('Painel de Inteligência de Negócios - TechVendas')
 
@@ -262,23 +262,63 @@ except Exception as exc:
     st.error(f'Erro ao carregar dados do banco: {exc}')
     st.stop()
 
+st.sidebar.markdown('### Tech Bot')
+st.sidebar.caption('Converse com a IA sobre vendas, inadimplência, vendedores e categorias usando os dados filtrados.')
+
+if 'chat_messages' not in st.session_state:
+    st.session_state.chat_messages = [
+        {
+            'role': 'assistant',
+            'content': 'Olá! Sou seu assistente financeiro. Pergunte sobre risco, sazonalidade, vendedores ou categorias.'
+        }
+    ]
+
+if st.sidebar.button('Limpar conversa', key='clear_chat', width='stretch'):
+    st.session_state.chat_messages = [
+        {
+            'role': 'assistant',
+            'content': 'Conversa reiniciada. Como posso ajudar na análise financeira?'
+        }
+    ]
+    st.rerun()
+
+with st.sidebar.container(border=True):
+    st.markdown('**Histórico**')
+    with st.container(height=320):
+        for msg in st.session_state.chat_messages[-20:]:
+            role_label = '👤 Você' if msg['role'] == 'user' else '🤖 Tech Bot'
+            st.markdown(f"**{role_label}:** {msg['content']}")
+
+    st.markdown('**Nova mensagem**')
+    user_question = st.text_area(
+        'Digite sua pergunta para o Tech Bot',
+        placeholder='Ex.: Quais ações podem reduzir a inadimplência em curto prazo?',
+        height=90,
+        key='chat_question_input'
+    )
+    send_clicked = st.button('Enviar', key='send_chat', width='stretch')
+
+pending_question = None
+if send_clicked:
+    if not user_question or not user_question.strip():
+        st.sidebar.warning('Digite uma mensagem antes de enviar.')
+    else:
+        pending_question = user_question.strip()
+
 st.sidebar.header('Filtros')
 anos = sorted([int(a) for a in df['ano'].dropna().unique()])
 cats = sorted(set(df['categorias_lista'].explode().dropna().tolist()))
 vends = sorted(df['vendedor_nome'].dropna().unique())
 
-ano_sel = st.sidebar.multiselect('Ano', anos, default=anos)
-cat_sel = st.sidebar.multiselect('Categoria de Produto', cats, default=cats)
-vend_sel = st.sidebar.multiselect('Vendedor', vends, default=vends)
+ano_sel = st.sidebar.multiselect('Ano', anos, default=[])
+cat_sel = st.sidebar.multiselect('Categoria de Produto', cats, default=[])
+vend_sel = st.sidebar.multiselect('Vendedor', vends, default=[])
 
-if not ano_sel:
-    ano_sel = anos
-if not cat_sel:
-    cat_sel = cats
-if not vend_sel:
-    vend_sel = vends
-
-f = df[df['ano'].isin(ano_sel) & df['vendedor_nome'].isin(vend_sel)].copy()
+f = df.copy()
+if ano_sel:
+    f = f[f['ano'].isin(ano_sel)]
+if vend_sel:
+    f = f[f['vendedor_nome'].isin(vend_sel)]
 if cat_sel:
     f = f[f['categorias_lista'].apply(lambda items: any(cat in items for cat in cat_sel))]
 
@@ -430,50 +470,6 @@ if st.button('Gerar 3 recomendações'):
             st.markdown(analise_ia)
     except Exception as exc:
         st.error(f'Erro ao gerar análise com Groq: {exc}')
-
-st.sidebar.markdown('### Tech Bot')
-st.sidebar.caption('Converse com a IA sobre vendas, inadimplência, vendedores e categorias usando os dados filtrados.')
-
-if 'chat_messages' not in st.session_state:
-    st.session_state.chat_messages = [
-        {
-            'role': 'assistant',
-            'content': 'Olá! Sou seu assistente financeiro. Pergunte sobre risco, sazonalidade, vendedores ou categorias.'
-        }
-    ]
-
-if st.sidebar.button('Limpar conversa', width='stretch'):
-    st.session_state.chat_messages = [
-        {
-            'role': 'assistant',
-            'content': 'Conversa reiniciada. Como posso ajudar na análise financeira?'
-        }
-    ]
-    st.rerun()
-
-with st.sidebar.container(border=True):
-    st.markdown('**Histórico**')
-    with st.container(height=320):
-        for msg in st.session_state.chat_messages[-20:]:
-            role_label = '👤 Você' if msg['role'] == 'user' else '🤖 Tech Bot'
-            st.markdown(f"**{role_label}:** {msg['content']}")
-
-    st.markdown('**Nova mensagem**')
-    user_question = st.text_area(
-        'Digite sua pergunta para o Tech Bot',
-        placeholder='Ex.: Quais ações podem reduzir a inadimplência em curto prazo?',
-        height=90,
-        key='chat_question_input'
-    )
-    send_clicked = st.button('Enviar', width='stretch')
-
-
-pending_question = None
-if send_clicked:
-    if not user_question or not user_question.strip():
-        st.sidebar.warning('Digite uma mensagem antes de enviar.')
-    else:
-        pending_question = user_question.strip()
 
 if pending_question:
     st.session_state.chat_messages.append({'role': 'user', 'content': pending_question})
