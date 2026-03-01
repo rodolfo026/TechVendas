@@ -431,8 +431,8 @@ if st.button('Gerar 3 recomendações'):
     except Exception as exc:
         st.error(f'Erro ao gerar análise com Groq: {exc}')
 
-st.markdown('### Tech Bot')
-st.caption('Converse com a IA sobre vendas, inadimplência, vendedores e categorias usando os dados filtrados.')
+st.sidebar.markdown('### Tech Bot')
+st.sidebar.caption('Converse com a IA sobre vendas, inadimplência, vendedores e categorias usando os dados filtrados.')
 
 if 'chat_messages' not in st.session_state:
     st.session_state.chat_messages = [
@@ -442,7 +442,7 @@ if 'chat_messages' not in st.session_state:
         }
     ]
 
-if st.button('Limpar conversa', width='stretch'):
+if st.sidebar.button('Limpar conversa', width='stretch'):
     st.session_state.chat_messages = [
         {
             'role': 'assistant',
@@ -451,15 +451,12 @@ if st.button('Limpar conversa', width='stretch'):
     ]
     st.rerun()
 
-with st.container(border=True):
-    st.markdown('**Tech Bot**')
-    st.caption('Faça perguntas sobre vendas, inadimplência, vendedores e categorias.')
-
+with st.sidebar.container(border=True):
     st.markdown('**Histórico**')
     with st.container(height=320):
         for msg in st.session_state.chat_messages[-20:]:
-            with st.chat_message(msg['role']):
-                st.markdown(msg['content'])
+            role_label = '👤 Você' if msg['role'] == 'user' else '🤖 Tech Bot'
+            st.markdown(f"**{role_label}:** {msg['content']}")
 
     st.markdown('**Nova mensagem**')
     user_question = st.text_area(
@@ -468,16 +465,13 @@ with st.container(border=True):
         height=90,
         key='chat_question_input'
     )
-
-    send_col1, send_col2 = st.columns([5, 1])
-    with send_col2:
-        send_clicked = st.button('Enviar', width='stretch')
+    send_clicked = st.button('Enviar', width='stretch')
 
 
 pending_question = None
 if send_clicked:
     if not user_question or not user_question.strip():
-        st.warning('Digite uma mensagem antes de enviar.')
+        st.sidebar.warning('Digite uma mensagem antes de enviar.')
     else:
         pending_question = user_question.strip()
 
