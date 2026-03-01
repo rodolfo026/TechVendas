@@ -75,6 +75,26 @@ def format_currency_full(value):
     return f'R$ {value:,.2f}'.replace(',', 'X').replace('.', ',').replace('X', '.')
 
 
+def chart_header(title, subtitle):
+    st.markdown(f'#### {title}')
+    st.caption(subtitle)
+
+
+def style_chart(fig, y_is_percent=False, show_legend=False):
+    fig.update_layout(
+        template='plotly_white',
+        title=None,
+        margin=dict(l=20, r=20, t=10, b=20),
+        showlegend=show_legend,
+        legend_title_text='',
+    )
+    fig.update_xaxes(showgrid=False)
+    fig.update_yaxes(showgrid=True)
+    if y_is_percent:
+        fig.update_yaxes(tickformat='.0%')
+    return fig
+
+
 def normalize_text(value):
     if value is None:
         return ''
@@ -358,12 +378,18 @@ k5.metric(
     help=f'{qtd_notas_inad:,} de {qtd_notas_total:,} notas fiscais com saldo vencido em aberto.'
 )
 st.caption(
-    f'ℹ️ **Metodologia oficial no KPI:** Taxa = Valor em atraso ÷ Carteira total, '
-    f'com base em financeiro.conta_receber (valor_original), títulos vencidos e não pagos. '
-    f'Carteira oficial: {format_currency_human(carteira_total_oficial)} | '
-    f'Em atraso oficial: {format_currency_human(total_inadimplente_oficial)}. '
-    f'Taxa por Notas (visão analítica filtrada): {qtd_notas_inad:,} de {qtd_notas_total:,} ({taxa_contagem:.2%}).'
+    f'ℹ️ Metodologia oficial (resumo): valor em atraso ÷ carteira total, com base em financeiro.conta_receber.'
 )
+with st.expander('Ver detalhes da metodologia'):
+    st.markdown(
+        f'- **Base oficial:** `financeiro.conta_receber`\n'
+        f'- **Carteira total:** soma de `valor_original`\n'
+        f'- **Valor em atraso:** títulos com `data_recebimento IS NULL` e `vencimento < CURRENT_DATE`\n'
+        f'- **Taxa oficial:** `valor_em_atraso / carteira_total`\n\n'
+        f'**Carteira oficial:** {format_currency_human(carteira_total_oficial)}  \n'
+        f'**Em atraso oficial:** {format_currency_human(total_inadimplente_oficial)}  \n'
+        f'**Taxa por notas (visão analítica filtrada):** {qtd_notas_inad:,} de {qtd_notas_total:,} ({taxa_contagem:.2%})'
+    )
 
 st.markdown('### Análise Qualitativa com IA (Groq)')
 resumo_numerico_ia = (
@@ -528,16 +554,36 @@ vendas_cat = (
     .groupby('categorias_lista', as_index=False)['valor_rateado']
     .sum()
     .rename(columns={'categorias_lista': 'categoria_produto', 'valor_rateado': 'valor_total'})
+    .sort_values('valor_total', ascending=False)
 )
 
-fig_bar = px.bar(vendas_cat, x='categoria_produto', y='valor_total', title='Vendas por Categoria')
-fig_bar.update_layout(xaxis_title='Categoria', yaxis_title='Valor vendido')
-g1.plotly_chart(fig_bar, width='stretch')
+with g1:
+    chart_header('Vendas por Categoria', 'Compara o faturamento acumulado por categoria (base filtrada).')
+    fig_bar = px.bar(
+        vendas_cat,
+        x='categoria_produto',
+        y='valor_total',
+        labels={'categoria_produto': 'Categoria', 'valor_total': 'Valor vendido'},
+        color_discrete_sequence=[px.colors.sequential.Blues[5]],
+    )
+    fig_bar.update_traces(opacity=0.9)
+    fig_bar.update_layout(xaxis_tickangle=-20)
+    fig_bar = style_chart(fig_bar)
+    g1.plotly_chart(fig_bar, width='stretch')
 
 serie_tempo = f.groupby('mes', as_index=False)['valor_total'].sum().sort_values('mes')
-fig_line = px.line(serie_tempo, x='mes', y='valor_total', title='Evolução Mensal de Vendas')
-fig_line.update_layout(xaxis_title='Mês', yaxis_title='Valor vendido')
-g2.plotly_chart(fig_line, width='stretch')
+with g2:
+    chart_header('Evolução de Vendas', 'Mostra tendência mensal de faturamento para leitura de sazonalidade.')
+    fig_line = px.line(
+        serie_tempo,
+        x='mes',
+        y='valor_total',
+        labels={'mes': 'Mês', 'valor_total': 'Valor vendido'},
+        markers=True,
+        color_discrete_sequence=[px.colors.sequential.Blues[7]],
+    )
+    fig_line = style_chart(fig_line)
+    g2.plotly_chart(fig_line, width='stretch')
 
 st.markdown('### Análise de Receita: evolução mensal e sazonalidade')
 
@@ -591,14 +637,17 @@ st.subheader('Análises Complementares')
 
 gx1, gx2 = st.columns(2)
 
-fig_pie = px.pie(
-    vendas_cat,
-    names='categoria_produto',
-    values='valor_total',
-    title='Participação nas Vendas por Categoria'
-)
-fig_pie.update_traces(textposition='inside', textinfo='percent+label')
-gx1.plotly_chart(fig_pie, width='stretch')
+with gx1:
+    chart_header('Participação por Categoria', 'Distribuição percentual das vendas entre as categorias.')
+    fig_pie = px.pie(
+        vendas_cat,
+        names='categoria_produto',
+        values='valor_total',
+        color_discrete_sequence=px.colors.qualitative.Set3,
+    )
+    fig_pie.update_traces(textposition='outside', textinfo='percent+label')
+    fig_pie = style_chart(fig_pie, show_legend=True)
+    gx1.plotly_chart(fig_pie, width='stretch')
 
 # Análise de Produto (volume, lucro e margem)
 categoria_produto_analise = (
@@ -669,32 +718,29 @@ top_vendedores_view['comissao_2_5'] = top_vendedores_view['comissao_2_5'].apply(
 )
 gx2.dataframe(top_vendedores_view, width='stretch')
 
-st.subheader('Taxa de Inadimplência por UF')
-st.caption(f'Taxa monetária filtrada (saldo vencido ÷ total vendido). Linha vermelha tracejada = média filtrada ({taxa_inadimplencia_filtros:.2%}).')
+chart_header(
+    'Inadimplência por UF',
+    f'Taxa monetária filtrada (saldo vencido ÷ total vendido). Linha tracejada = média filtrada ({taxa_inadimplencia_filtros:.2%}).'
+)
 fig_inad_uf = px.bar(
     inad_uf,
     x='uf',
     y='taxa_inadimplencia',
-    title='Taxa de Inadimplência Monetária por UF',
     text='taxa_inadimplencia',
     color='taxa_inadimplencia',
     color_continuous_scale='Reds',
     labels={'uf': 'UF', 'taxa_inadimplencia': 'Taxa Inad.'},
 )
 fig_inad_uf.update_traces(texttemplate='%{text:.1%}', textposition='outside')
-fig_inad_uf.update_layout(
-    xaxis_title='UF',
-    yaxis_title='Taxa de inadimplência',
-    yaxis_tickformat='.0%',
-    coloraxis_showscale=False,
-)
+fig_inad_uf.update_layout(coloraxis_showscale=False)
 fig_inad_uf.add_hline(
     y=taxa_inadimplencia_filtros,
     line_dash='dash',
-    line_color='red',
+    line_color=px.colors.sequential.Reds[-1],
     annotation_text=f'Média: {taxa_inadimplencia_filtros:.1%}',
     annotation_position='top right',
 )
+fig_inad_uf = style_chart(fig_inad_uf, y_is_percent=True)
 st.plotly_chart(fig_inad_uf, width='stretch')
 
 st.subheader('Risco por UF')
@@ -712,8 +758,7 @@ inad_uf_view['Taxa de inadimplência'] = inad_uf_view['Taxa de inadimplência'].
 st.dataframe(inad_uf_view, width='stretch')
 
 # --- Pergunta extra: UFs com alta receita E alta inadimplência (prioridade de ação) ---
-st.subheader('Prioridade de Ação por UF')
-st.caption('UFs com maior receita e maior inadimplência simultaneamente â€” onde concentrar esforços de cobrança.')
+chart_header('Prioridade por UF', 'Ranking de UFs com alta receita e alta inadimplência para foco de cobrança.')
 
 prioridade_uf = inad_uf.copy()
 prioridade_uf['score_prioridade'] = (
@@ -736,7 +781,6 @@ fig_prioridade = px.bar(
     x='score_prioridade',
     y='label',
     orientation='h',
-    title='Top 15 UFs por Prioridade de Ação (alta receita + alta inadimplência)',
     color='taxa_inadimplencia',
     color_continuous_scale='Reds',
     labels={
@@ -750,10 +794,10 @@ fig_prioridade.update_traces(texttemplate='%{text:.1f}', textposition='outside')
 fig_prioridade.update_layout(
     height=500,
     yaxis_title='',
-    xaxis_title='Score de Prioridade',
     coloraxis_colorbar_title='Taxa Inad.',
     coloraxis_colorbar_tickformat='.0%',
 )
+fig_prioridade = style_chart(fig_prioridade)
 st.plotly_chart(fig_prioridade, width='stretch')
 
 prioridade_view = prioridade_uf.head(10).rename(columns={
