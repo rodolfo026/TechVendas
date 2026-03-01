@@ -86,12 +86,19 @@ def get_plotly_template():
 
 
 def style_chart(fig, y_is_percent=False, show_legend=False):
+    is_dark = st.session_state.get('ui_theme', 'Claro') == 'Escuro'
+    bg_color = '#111b2e' if is_dark else '#ffffff'
+    font_color = '#e5e7eb' if is_dark else '#111827'
+
     fig.update_layout(
         template=get_plotly_template(),
         title_text='',
         margin=dict(l=20, r=20, t=10, b=20),
         showlegend=show_legend,
         legend_title_text='',
+        paper_bgcolor=bg_color,
+        plot_bgcolor=bg_color,
+        font=dict(color=font_color),
     )
     fig.update_xaxes(showgrid=False)
     fig.update_yaxes(showgrid=True)
@@ -105,25 +112,98 @@ def apply_ui_theme(theme):
         st.markdown(
             '''
             <style>
+            :root {
+                --bg-primary: #0b1220;
+                --bg-secondary: #111b2e;
+                --bg-tertiary: #0f1a2b;
+                --border-soft: #2a3956;
+                --text-primary: #e5e7eb;
+                --text-muted: #9ca3af;
+                --accent: #3b82f6;
+            }
+
             [data-testid="stAppViewContainer"] {
-                background-color: #0e1117;
-                color: #f3f4f6;
+                background-color: var(--bg-primary);
+                color: var(--text-primary);
+            }
+            [data-testid="stHeader"] {
+                background: transparent;
+            }
+            [data-testid="stAppViewContainer"] .main .block-container {
+                padding-top: 1.2rem;
             }
             [data-testid="stSidebar"] {
-                background-color: #111827;
+                background-color: var(--bg-secondary);
             }
             [data-testid="stSidebar"] * {
-                color: #f3f4f6;
+                color: var(--text-primary);
             }
+
+            h1, h2, h3, h4, h5, h6, p, label, span {
+                color: var(--text-primary);
+            }
+            [data-testid="stCaptionContainer"] p,
+            .stCaption {
+                color: var(--text-muted) !important;
+            }
+
             [data-testid="stMetric"] {
-                background: rgba(255, 255, 255, 0.04);
-                border: 1px solid rgba(255, 255, 255, 0.10);
+                background: var(--bg-secondary);
+                border: 1px solid var(--border-soft);
                 border-radius: 10px;
                 padding: 8px 10px;
             }
-            [data-testid="stDataFrame"] {
-                border: 1px solid rgba(255, 255, 255, 0.10);
+
+            div[data-baseweb="select"] > div,
+            .stTextInput input,
+            .stTextArea textarea,
+            .stDateInput input,
+            .stNumberInput input {
+                background-color: var(--bg-tertiary) !important;
+                border: 1px solid var(--border-soft) !important;
+                color: var(--text-primary) !important;
+            }
+
+            .stButton button {
+                background-color: #1d4ed8;
+                border: 1px solid #1d4ed8;
+                color: #ffffff;
+            }
+            .stButton button:hover {
+                background-color: #2563eb;
+                border-color: #2563eb;
+            }
+
+            [data-testid="stExpander"] {
+                border: 1px solid var(--border-soft);
                 border-radius: 10px;
+                background: var(--bg-secondary);
+            }
+            [data-testid="stDataFrame"] {
+                border: 1px solid var(--border-soft);
+                border-radius: 10px;
+                overflow: hidden;
+            }
+            [data-testid="stDataFrame"] [role="grid"] {
+                background-color: var(--bg-secondary) !important;
+                color: var(--text-primary) !important;
+            }
+            [data-testid="stDataFrame"] [role="columnheader"] {
+                background-color: #16243b !important;
+                color: var(--text-primary) !important;
+                border-color: var(--border-soft) !important;
+            }
+            [data-testid="stDataFrame"] [role="gridcell"],
+            [data-testid="stDataFrame"] [role="rowheader"] {
+                background-color: var(--bg-secondary) !important;
+                color: var(--text-primary) !important;
+                border-color: var(--border-soft) !important;
+            }
+            [data-testid="stDataFrame"] [data-testid="StyledDataFrameDataCell"] {
+                color: var(--text-primary) !important;
+            }
+            [data-testid="stDataFrame"] [data-testid="StyledDataFrameDataCell"] a {
+                color: #93c5fd !important;
             }
             </style>
             ''',
@@ -613,7 +693,7 @@ with g1:
     fig_bar.update_traces(opacity=0.9)
     fig_bar.update_layout(xaxis_tickangle=-20)
     fig_bar = style_chart(fig_bar)
-    g1.plotly_chart(fig_bar, width='stretch')
+    g1.plotly_chart(fig_bar, width='stretch', theme=None)
 
 serie_tempo = f.groupby('mes', as_index=False)['valor_total'].sum().sort_values('mes')
 with g2:
@@ -627,7 +707,7 @@ with g2:
         color_discrete_sequence=[px.colors.sequential.Blues[7]],
     )
     fig_line = style_chart(fig_line)
-    g2.plotly_chart(fig_line, width='stretch')
+    g2.plotly_chart(fig_line, width='stretch', theme=None)
 
 st.markdown('### Análise de Receita: evolução mensal e sazonalidade')
 
@@ -675,7 +755,12 @@ sazonalidade_view['venda_total'] = sazonalidade_view['venda_total'].apply(
 sazonalidade_view['venda_media'] = sazonalidade_view['venda_media'].apply(
     lambda value: f'R$ {value:,.2f}'.replace(',', 'X').replace('.', ',').replace('X', '.')
 )
-st.dataframe(sazonalidade_view, width='stretch')
+sazonalidade_view = sazonalidade_view.rename(columns={
+    'mes': 'Mês',
+    'venda_total': 'Venda Total',
+    'venda_media': 'Venda Média',
+})
+st.dataframe(sazonalidade_view, width='stretch', hide_index=True)
 
 st.subheader('Análises Complementares')
 
@@ -690,8 +775,9 @@ with gx1:
         color_discrete_sequence=px.colors.qualitative.Set3,
     )
     fig_pie.update_traces(textposition='outside', textinfo='percent+label')
+    fig_pie.update_layout(height=500)
     fig_pie = style_chart(fig_pie, show_legend=True)
-    gx1.plotly_chart(fig_pie, width='stretch')
+    gx1.plotly_chart(fig_pie, width='stretch', theme=None)
 
 # Análise de Produto (volume, lucro e margem)
 categoria_produto_analise = (
@@ -732,7 +818,14 @@ analise_view['lucro_total'] = analise_view['lucro_total'].apply(
     lambda value: f'R$ {value:,.2f}'.replace(',', 'X').replace('.', ',').replace('X', '.')
 )
 analise_view['margem_lucro'] = analise_view['margem_lucro'].apply(lambda value: f'{value:.2%}')
-st.dataframe(analise_view, width='stretch')
+analise_view = analise_view.rename(columns={
+    'categoria_produto': 'Categoria do Produto',
+    'volume_vendido': 'Volume Vendido',
+    'custo_total': 'Custo Total',
+    'lucro_total': 'Lucro Total',
+    'margem_lucro': 'Margem de Lucro',
+})
+st.dataframe(analise_view, width='stretch', hide_index=True)
 
 top_vendedores = (
     f.groupby('vendedor_nome', as_index=False)['valor_total']
@@ -746,21 +839,24 @@ inad_uf = f.groupby('uf', as_index=False).agg(total=('valor_total', 'sum'), inad
 inad_uf['taxa_inadimplencia'] = inad_uf['inad_valor'] / inad_uf['total'].where(inad_uf['total'] != 0, 1)
 inad_uf = inad_uf.sort_values('taxa_inadimplencia', ascending=False)
 
-gx2.markdown('### Top 5 Vendedores e Comissão (2,5%)')
+with gx2:
+    chart_header('Top 5 Vendedores', 'Ranking por valor vendido e comissão de 2,5%.')
 top_vendedores_view = top_vendedores.rename(
     columns={
-        'vendedor_nome': 'nome_vendedor',
-        'valor_total': 'valor_nota',
-        'comissao_2_5_pct': 'comissao_2_5',
+        'vendedor_nome': 'Vendedor',
+        'valor_total': 'Valor Vendido',
+        'comissao_2_5_pct': 'Comissão (2,5%)',
     }
 ).copy()
-top_vendedores_view['valor_nota'] = top_vendedores_view['valor_nota'].apply(
+top_vendedores_view['Valor Vendido'] = top_vendedores_view['Valor Vendido'].apply(
     lambda value: f'R$ {value:,.2f}'.replace(',', 'X').replace('.', ',').replace('X', '.')
 )
-top_vendedores_view['comissao_2_5'] = top_vendedores_view['comissao_2_5'].apply(
+top_vendedores_view['Comissão (2,5%)'] = top_vendedores_view['Comissão (2,5%)'].apply(
     lambda value: f'R$ {value:,.2f}'.replace(',', 'X').replace('.', ',').replace('X', '.')
 )
-gx2.dataframe(top_vendedores_view, width='stretch')
+top_vendedores_view.insert(0, 'Ranking', range(1, len(top_vendedores_view) + 1))
+with gx2:
+    st.dataframe(top_vendedores_view, width='stretch', height=500, hide_index=True)
 
 chart_header(
     'Inadimplência por UF',
@@ -785,7 +881,7 @@ fig_inad_uf.add_hline(
     annotation_position='top right',
 )
 fig_inad_uf = style_chart(fig_inad_uf, y_is_percent=True)
-st.plotly_chart(fig_inad_uf, width='stretch')
+st.plotly_chart(fig_inad_uf, width='stretch', theme=None)
 
 st.subheader('Risco por UF')
 inad_uf_view = inad_uf.rename(
@@ -799,7 +895,7 @@ inad_uf_view = inad_uf.rename(
 inad_uf_view['Total vendido'] = inad_uf_view['Total vendido'].apply(format_currency_human)
 inad_uf_view['Saldo inadimplente'] = inad_uf_view['Saldo inadimplente'].apply(format_currency_human)
 inad_uf_view['Taxa de inadimplência'] = inad_uf_view['Taxa de inadimplência'].apply(lambda value: f'{value:.2%}')
-st.dataframe(inad_uf_view, width='stretch')
+st.dataframe(inad_uf_view, width='stretch', hide_index=True)
 
 # --- Pergunta extra: UFs com alta receita E alta inadimplência (prioridade de ação) ---
 chart_header('Prioridade por UF', 'Ranking de UFs com alta receita e alta inadimplência para foco de cobrança.')
@@ -842,7 +938,7 @@ fig_prioridade.update_layout(
     coloraxis_colorbar_tickformat='.0%',
 )
 fig_prioridade = style_chart(fig_prioridade)
-st.plotly_chart(fig_prioridade, width='stretch')
+st.plotly_chart(fig_prioridade, width='stretch', theme=None)
 
 prioridade_view = prioridade_uf.head(10).rename(columns={
     'uf': 'UF',
@@ -855,5 +951,6 @@ prioridade_view['Total Vendido'] = prioridade_view['Total Vendido'].apply(format
 prioridade_view['Saldo Inadimplente'] = prioridade_view['Saldo Inadimplente'].apply(format_currency_human)
 prioridade_view['Taxa de Inadimplência'] = prioridade_view['Taxa de Inadimplência'].apply(lambda v: f'{v:.2%}')
 prioridade_view['Score de Prioridade'] = prioridade_view['Score de Prioridade'].apply(lambda v: f'{v:.1f}')
-st.dataframe(prioridade_view, width='stretch')
+prioridade_view.insert(0, 'Ranking', range(1, len(prioridade_view) + 1))
+st.dataframe(prioridade_view, width='stretch', hide_index=True)
 
