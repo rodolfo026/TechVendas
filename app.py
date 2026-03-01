@@ -80,9 +80,14 @@ def chart_header(title, subtitle):
     st.caption(subtitle)
 
 
+def get_plotly_template():
+    theme = st.session_state.get('ui_theme', 'Claro')
+    return 'plotly_dark' if theme == 'Escuro' else 'plotly_white'
+
+
 def style_chart(fig, y_is_percent=False, show_legend=False):
     fig.update_layout(
-        template='plotly_white',
+        template=get_plotly_template(),
         title_text='',
         margin=dict(l=20, r=20, t=10, b=20),
         showlegend=show_legend,
@@ -93,6 +98,37 @@ def style_chart(fig, y_is_percent=False, show_legend=False):
     if y_is_percent:
         fig.update_yaxes(tickformat='.0%')
     return fig
+
+
+def apply_ui_theme(theme):
+    if theme == 'Escuro':
+        st.markdown(
+            '''
+            <style>
+            [data-testid="stAppViewContainer"] {
+                background-color: #0e1117;
+                color: #f3f4f6;
+            }
+            [data-testid="stSidebar"] {
+                background-color: #111827;
+            }
+            [data-testid="stSidebar"] * {
+                color: #f3f4f6;
+            }
+            [data-testid="stMetric"] {
+                background: rgba(255, 255, 255, 0.04);
+                border: 1px solid rgba(255, 255, 255, 0.10);
+                border-radius: 10px;
+                padding: 8px 10px;
+            }
+            [data-testid="stDataFrame"] {
+                border: 1px solid rgba(255, 255, 255, 0.10);
+                border-radius: 10px;
+            }
+            </style>
+            ''',
+            unsafe_allow_html=True,
+        )
 
 
 def normalize_text(value):
@@ -272,6 +308,14 @@ def load_official_inad_metrics():
 
 
 st.set_page_config(page_title='Dashboard BI - TechVendas', layout='wide', initial_sidebar_state='expanded')
+
+if 'ui_theme' not in st.session_state:
+    st.session_state.ui_theme = 'Claro'
+
+st.sidebar.markdown('### Aparência')
+st.sidebar.radio('Modo', ['Claro', 'Escuro'], key='ui_theme', horizontal=True)
+apply_ui_theme(st.session_state.ui_theme)
+
 st.image('Logo.png', width=220)
 st.title('Painel de Inteligência de Negócios - TechVendas')
 
