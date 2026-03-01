@@ -83,7 +83,7 @@ def chart_header(title, subtitle):
 def style_chart(fig, y_is_percent=False, show_legend=False):
     fig.update_layout(
         template='plotly_white',
-        title=None,
+        title_text='',
         margin=dict(l=20, r=20, t=10, b=20),
         showlegend=show_legend,
         legend_title_text='',
