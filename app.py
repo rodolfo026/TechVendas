@@ -768,13 +768,24 @@ gx1, gx2 = st.columns(2)
 
 with gx1:
     chart_header('Participação por Categoria', 'Distribuição percentual das vendas entre as categorias.')
+    vendas_cat_pie = vendas_cat.copy()
+    vendas_cat_pie['valor_vendido_fmt'] = vendas_cat_pie['valor_total'].apply(format_currency_full)
     fig_pie = px.pie(
-        vendas_cat,
+        vendas_cat_pie,
         names='categoria_produto',
         values='valor_total',
         color_discrete_sequence=px.colors.qualitative.Set3,
+        hover_data={'valor_total': False, 'valor_vendido_fmt': True},
+        labels={
+            'categoria_produto': 'Categoria',
+            'valor_vendido_fmt': 'Valor Vendido',
+        },
     )
-    fig_pie.update_traces(textposition='outside', textinfo='percent+label')
+    fig_pie.update_traces(
+        textposition='outside',
+        textinfo='percent+label',
+        hovertemplate='<b>Categoria</b>: %{label}<br><b>Valor Vendido</b>: %{customdata[0]}<br><b>Participação</b>: %{percent}<extra></extra>',
+    )
     fig_pie.update_layout(height=500)
     fig_pie = style_chart(fig_pie, show_legend=True)
     gx1.plotly_chart(fig_pie, width='stretch', theme=None)
@@ -812,6 +823,9 @@ prod_c3.metric('Top categoria por margem', rank_margem.iloc[0]['categoria_produt
 
 analise_view = categoria_produto_analise.sort_values(['lucro_total', 'volume_vendido'], ascending=False).copy()
 analise_view['volume_vendido'] = analise_view['volume_vendido'].apply(
+    lambda value: f'R$ {value:,.2f}'.replace(',', 'X').replace('.', ',').replace('X', '.')
+)
+analise_view['custo_total'] = analise_view['custo_total'].apply(
     lambda value: f'R$ {value:,.2f}'.replace(',', 'X').replace('.', ',').replace('X', '.')
 )
 analise_view['lucro_total'] = analise_view['lucro_total'].apply(
