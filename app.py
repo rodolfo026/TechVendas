@@ -743,8 +743,8 @@ ha_sazonalidade = variacao_sazonal >= 0.15
 
 rec_c1, rec_c2, rec_c3 = st.columns(3)
 rec_c1.metric('Mês pico de vendas', mes_pico['mes'] if mes_pico is not None else '-')
-rec_c2.metric('Mês mais fraco', mes_fraco['mes'] if mes_fraco is not None else '-')
-rec_c3.metric('Variação pico x fraco', f'{variacao_sazonal:.2%}')
+rec_c2.metric('Mês de menor receita', mes_fraco['mes'] if mes_fraco is not None else '-')
+rec_c3.metric('Variação pico x menor receita', f'{variacao_sazonal:.2%}')
 
 st.info('Existe sazonalidade? ' + ('Sim, há indícios relevantes.' if ha_sazonalidade else 'Não, a variação mensal é relativamente estável.'))
 
