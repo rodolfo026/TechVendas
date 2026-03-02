@@ -107,6 +107,63 @@ def style_chart(fig, y_is_percent=False, show_legend=False):
     return fig
 
 
+def render_table(dataframe, height=None, hide_index=True):
+    is_dark = st.session_state.get('ui_theme', 'Claro') == 'Escuro'
+    table_html = dataframe.to_html(index=not hide_index, border=0)
+    max_height_css = f'max-height: {height}px;' if isinstance(height, int) and height > 0 else ''
+
+    if is_dark:
+        container_bg = '#111b2e'
+        header_bg = '#16243b'
+        row_bg = '#111b2e'
+        row_alt_bg = '#0f1a2b'
+        border_color = '#2a3956'
+        text_color = '#e5e7eb'
+    else:
+        container_bg = '#ffffff'
+        header_bg = '#f3f4f6'
+        row_bg = '#ffffff'
+        row_alt_bg = '#f9fafb'
+        border_color = '#d1d5db'
+        text_color = '#111827'
+
+    st.markdown(
+        f'''
+        <div style="overflow-x:auto; overflow-y:auto; {max_height_css} border:1px solid {border_color}; border-radius:10px; background-color:{container_bg};">
+            <style>
+                .theme-table table {{
+                    width: 100%;
+                    border-collapse: collapse;
+                    background-color: {container_bg};
+                    color: {text_color};
+                    font-size: 0.95rem;
+                }}
+                .theme-table thead th {{
+                    position: sticky;
+                    top: 0;
+                    background-color: {header_bg};
+                    color: {text_color};
+                    border: 1px solid {border_color};
+                    padding: 10px;
+                    text-align: left;
+                }}
+                .theme-table tbody td {{
+                    border: 1px solid {border_color};
+                    padding: 10px;
+                    background-color: {row_bg};
+                    color: {text_color};
+                }}
+                .theme-table tbody tr:nth-child(even) td {{
+                    background-color: {row_alt_bg};
+                }}
+            </style>
+            <div class="theme-table">{table_html}</div>
+        </div>
+        ''',
+        unsafe_allow_html=True,
+    )
+
+
 def apply_ui_theme(theme):
     if theme == 'Escuro':
         st.markdown(
@@ -406,9 +463,6 @@ except Exception as exc:
     st.error(f'Erro ao carregar dados do banco: {exc}')
     st.stop()
 
-st.sidebar.markdown('### Tech Bot')
-st.sidebar.caption('Converse com a IA sobre vendas, inadimplência, vendedores e categorias usando os dados filtrados.')
-
 if 'chat_messages' not in st.session_state:
     st.session_state.chat_messages = [
         {
@@ -416,6 +470,19 @@ if 'chat_messages' not in st.session_state:
             'content': 'Olá! Sou seu assistente financeiro. Pergunte sobre risco, sazonalidade, vendedores ou categorias.'
         }
     ]
+
+st.sidebar.header('Filtros')
+anos = sorted([int(a) for a in df['ano'].dropna().unique()])
+cats = sorted(set(df['categorias_lista'].explode().dropna().tolist()))
+vends = sorted(df['vendedor_nome'].dropna().unique())
+
+ano_sel = st.sidebar.multiselect('Ano', anos, default=[])
+cat_sel = st.sidebar.multiselect('Categoria de Produto', cats, default=[])
+vend_sel = st.sidebar.multiselect('Vendedor', vends, default=[])
+
+st.sidebar.divider()
+st.sidebar.markdown('### Tech Bot')
+st.sidebar.caption('Converse com a IA sobre vendas, inadimplência, vendedores e categorias usando os dados filtrados.')
 
 if st.sidebar.button('Limpar conversa', key='clear_chat', width='stretch'):
     st.session_state.chat_messages = [
@@ -434,29 +501,13 @@ with st.sidebar.container(border=True):
             st.markdown(f"**{role_label}:** {msg['content']}")
 
     st.markdown('**Nova mensagem**')
-    user_question = st.text_area(
+    pending_question = st.chat_input(
         'Digite sua pergunta para o Tech Bot',
-        placeholder='Ex.: Quais ações podem reduzir a inadimplência em curto prazo?',
-        height=90,
         key='chat_question_input'
     )
-    send_clicked = st.button('Enviar', key='send_chat', width='stretch')
 
-pending_question = None
-if send_clicked:
-    if not user_question or not user_question.strip():
-        st.sidebar.warning('Digite uma mensagem antes de enviar.')
-    else:
-        pending_question = user_question.strip()
-
-st.sidebar.header('Filtros')
-anos = sorted([int(a) for a in df['ano'].dropna().unique()])
-cats = sorted(set(df['categorias_lista'].explode().dropna().tolist()))
-vends = sorted(df['vendedor_nome'].dropna().unique())
-
-ano_sel = st.sidebar.multiselect('Ano', anos, default=[])
-cat_sel = st.sidebar.multiselect('Categoria de Produto', cats, default=[])
-vend_sel = st.sidebar.multiselect('Vendedor', vends, default=[])
+if pending_question:
+    pending_question = pending_question.strip()
 
 f = df.copy()
 if ano_sel:
@@ -760,35 +811,51 @@ sazonalidade_view = sazonalidade_view.rename(columns={
     'venda_total': 'Venda Total',
     'venda_media': 'Venda Média',
 })
-st.dataframe(sazonalidade_view, width='stretch', hide_index=True)
+render_table(sazonalidade_view, hide_index=True)
 
 st.subheader('Análises Complementares')
 
 gx1, gx2 = st.columns(2)
+altura_cards_complementares = 520
 
 with gx1:
     chart_header('Participação por Categoria', 'Distribuição percentual das vendas entre as categorias.')
-    vendas_cat_pie = vendas_cat.copy()
-    vendas_cat_pie['valor_vendido_fmt'] = vendas_cat_pie['valor_total'].apply(format_currency_full)
-    fig_pie = px.pie(
-        vendas_cat_pie,
-        names='categoria_produto',
-        values='valor_total',
-        color_discrete_sequence=px.colors.qualitative.Set3,
-        hover_data={'valor_total': False, 'valor_vendido_fmt': True},
+    vendas_cat_bar = vendas_cat.copy()
+    total_categoria = vendas_cat_bar['valor_total'].sum()
+    vendas_cat_bar['participacao'] = (
+        vendas_cat_bar['valor_total'] / total_categoria if total_categoria else 0
+    )
+    vendas_cat_bar['valor_vendido_fmt'] = vendas_cat_bar['valor_total'].apply(format_currency_full)
+    vendas_cat_bar = vendas_cat_bar.sort_values('participacao', ascending=False)
+
+    fig_participacao = px.bar(
+        vendas_cat_bar,
+        x='participacao',
+        y='categoria_produto',
+        orientation='h',
+        text='participacao',
         labels={
             'categoria_produto': 'Categoria',
+            'participacao': 'Participação',
             'valor_vendido_fmt': 'Valor Vendido',
         },
+        color='participacao',
+        color_continuous_scale='Blues',
+        hover_data={'valor_vendido_fmt': True, 'valor_total': False},
     )
-    fig_pie.update_traces(
+    fig_participacao.update_traces(
+        texttemplate='%{text:.1%}',
         textposition='outside',
-        textinfo='percent+label',
-        hovertemplate='<b>Categoria</b>: %{label}<br><b>Valor Vendido</b>: %{customdata[0]}<br><b>Participação</b>: %{percent}<extra></extra>',
+        hovertemplate='<b>Categoria</b>: %{y}<br><b>Participação</b>: %{x:.1%}<br><b>Valor Vendido</b>: %{customdata[0]}<extra></extra>',
     )
-    fig_pie.update_layout(height=500)
-    fig_pie = style_chart(fig_pie, show_legend=True)
-    gx1.plotly_chart(fig_pie, width='stretch', theme=None)
+    fig_participacao.update_layout(
+        height=altura_cards_complementares,
+        yaxis={'categoryorder': 'total ascending'},
+        coloraxis_showscale=False,
+    )
+    fig_participacao = style_chart(fig_participacao)
+    fig_participacao.update_xaxes(tickformat='.0%')
+    gx1.plotly_chart(fig_participacao, width='stretch', theme=None)
 
 # Análise de Produto (volume, lucro e margem)
 categoria_produto_analise = (
@@ -839,13 +906,13 @@ analise_view = analise_view.rename(columns={
     'lucro_total': 'Lucro Total',
     'margem_lucro': 'Margem de Lucro',
 })
-st.dataframe(analise_view, width='stretch', hide_index=True)
+render_table(analise_view, hide_index=True)
 
 top_vendedores = (
     f.groupby('vendedor_nome', as_index=False)['valor_total']
     .sum()
     .sort_values('valor_total', ascending=False)
-    .head(5)
+    .head(10)
 )
 top_vendedores['comissao_2_5_pct'] = top_vendedores['valor_total'] * 0.025
 
@@ -854,7 +921,7 @@ inad_uf['taxa_inadimplencia'] = inad_uf['inad_valor'] / inad_uf['total'].where(i
 inad_uf = inad_uf.sort_values('taxa_inadimplencia', ascending=False)
 
 with gx2:
-    chart_header('Top 5 Vendedores', 'Ranking por valor vendido e comissão de 2,5%.')
+    chart_header('Top 10 Vendedores', 'Ranking por valor vendido e comissão de 2,5%.')
 top_vendedores_view = top_vendedores.rename(
     columns={
         'vendedor_nome': 'Vendedor',
@@ -870,7 +937,7 @@ top_vendedores_view['Comissão (2,5%)'] = top_vendedores_view['Comissão (2,5%)'
 )
 top_vendedores_view.insert(0, 'Ranking', range(1, len(top_vendedores_view) + 1))
 with gx2:
-    st.dataframe(top_vendedores_view, width='stretch', height=500, hide_index=True)
+    render_table(top_vendedores_view, height=altura_cards_complementares, hide_index=True)
 
 chart_header(
     'Inadimplência por UF',
@@ -909,7 +976,7 @@ inad_uf_view = inad_uf.rename(
 inad_uf_view['Total vendido'] = inad_uf_view['Total vendido'].apply(format_currency_human)
 inad_uf_view['Saldo inadimplente'] = inad_uf_view['Saldo inadimplente'].apply(format_currency_human)
 inad_uf_view['Taxa de inadimplência'] = inad_uf_view['Taxa de inadimplência'].apply(lambda value: f'{value:.2%}')
-st.dataframe(inad_uf_view, width='stretch', hide_index=True)
+render_table(inad_uf_view, hide_index=True)
 
 # --- Pergunta extra: UFs com alta receita E alta inadimplência (prioridade de ação) ---
 chart_header('Prioridade por UF', 'Ranking de UFs com alta receita e alta inadimplência para foco de cobrança.')
@@ -966,5 +1033,5 @@ prioridade_view['Saldo Inadimplente'] = prioridade_view['Saldo Inadimplente'].ap
 prioridade_view['Taxa de Inadimplência'] = prioridade_view['Taxa de Inadimplência'].apply(lambda v: f'{v:.2%}')
 prioridade_view['Score de Prioridade'] = prioridade_view['Score de Prioridade'].apply(lambda v: f'{v:.1f}')
 prioridade_view.insert(0, 'Ranking', range(1, len(prioridade_view) + 1))
-st.dataframe(prioridade_view, width='stretch', hide_index=True)
+render_table(prioridade_view, hide_index=True)
 
