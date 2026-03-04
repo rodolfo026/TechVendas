@@ -1,6 +1,10 @@
 # TechVendas BI — Painel de Inteligência de Negócios
 
+[![Streamlit App](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://techvendas.streamlit.app/)
+
 Dashboard interativo para análise de vendas, inadimplência e priorização de cobrança, construído com Python, Streamlit e integração com IA generativa (Groq).
+
+🔗 **[Acesse o app ao vivo → techvendas.streamlit.app](https://techvendas.streamlit.app/)**
 
 ---
 
@@ -17,7 +21,9 @@ Este projeto entrega uma solução de Business Intelligence ponta a ponta para a
 
 ## Demonstração
 
-> O app pode ser executado localmente ou publicado no [Streamlit Community Cloud](https://streamlit.io/cloud).
+**🚀 App publicado:** [https://techvendas.streamlit.app/](https://techvendas.streamlit.app/)
+
+> Também pode ser executado localmente seguindo as instruções abaixo.
 
 ---
 
