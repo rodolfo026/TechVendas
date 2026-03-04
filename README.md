@@ -186,4 +186,4 @@ UFs com alto volume e alta inadimplência recebem prioridade máxima de ação.
 
 ## Autor
 
-**Rodolfo** — [GitHub](https://github.com/rodolfo026)
+**Rodolfo José** — [GitHub](https://github.com/rodolfo026)
