@@ -34,13 +34,11 @@ Este projeto entrega uma solução de Business Intelligence ponta a ponta para a
 
 ## Screenshots
 
-> Adicione aqui capturas de tela do dashboard (modo claro e escuro, KPIs, gráficos).
-> Sugestão: tire prints do app em [techvendas.streamlit.app](https://techvendas.streamlit.app/), salve na pasta `assets/` e substitua os comentários abaixo pelas imagens.
+![KPIs e visão geral](assets/screenshot_kpis.png)
 
-<!-- Exemplo:
-![Dashboard Principal](assets/screenshot_dashboard.png)
-![Chat com IA](assets/screenshot_chat.png)
--->
+![Inadimplência por UF e Chat com IA](assets/screenshot_inadimplencia.png)
+
+![Prioridade de cobrança por UF](assets/screenshot_prioridade.png)
 
 ---
 
