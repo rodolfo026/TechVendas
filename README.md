@@ -1,6 +1,11 @@
 # TechVendas BI — Painel de Inteligência de Negócios
 
 [![Streamlit App](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://techvendas.streamlit.app/)
+![Python](https://img.shields.io/badge/Python-3.10%2B-blue?logo=python&logoColor=white)
+![PostgreSQL](https://img.shields.io/badge/PostgreSQL-4169E1?logo=postgresql&logoColor=white)
+![Plotly](https://img.shields.io/badge/Plotly-3F4F75?logo=plotly&logoColor=white)
+![Groq](https://img.shields.io/badge/Groq-LLM%20AI-ff6b35)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 Dashboard interativo para análise de vendas, inadimplência e priorização de cobrança, construído com Python, Streamlit e integração com IA generativa (Groq).
 
@@ -24,6 +29,18 @@ Este projeto entrega uma solução de Business Intelligence ponta a ponta para a
 **🚀 App publicado:** [https://techvendas.streamlit.app/](https://techvendas.streamlit.app/)
 
 > Também pode ser executado localmente seguindo as instruções abaixo.
+
+---
+
+## Screenshots
+
+> Adicione aqui capturas de tela do dashboard (modo claro e escuro, KPIs, gráficos).
+> Sugestão: tire prints do app em [techvendas.streamlit.app](https://techvendas.streamlit.app/), salve na pasta `assets/` e substitua os comentários abaixo pelas imagens.
+
+<!-- Exemplo:
+![Dashboard Principal](assets/screenshot_dashboard.png)
+![Chat com IA](assets/screenshot_chat.png)
+-->
 
 ---
 
@@ -106,15 +123,10 @@ pip install -r requirements.txt
 
 ### 5. Configure as variáveis de ambiente
 
-Crie um arquivo `.env` na raiz do projeto (nunca commite este arquivo):
+Copie o arquivo de exemplo e preencha com suas credenciais:
 
-```env
-DB_HOST=seu_host_postgresql
-DB_PORT=5432
-DB_NAME=nome_do_banco
-DB_USERNAME=seu_usuario
-DB_PASSWORD=sua_senha
-GROQ_API_KEY=sua_chave_groq
+```bash
+cp .env.example .env
 ```
 
 > Para obter uma chave da API Groq gratuitamente: [console.groq.com](https://console.groq.com)
@@ -142,12 +154,14 @@ O dashboard abrirá automaticamente em `http://localhost:8501`.
 
 ```
 TechVendas/
-├── app.py                          # Aplicação principal Streamlit
-├── trabalho_final_jupyter.ipynb    # Análise exploratória em Jupyter
-├── requirements.txt                # Dependências Python
-├── .env                            # Credenciais locais (não versionado)
+├── app.py                        # Aplicação principal Streamlit
+├── analise_inadimplencia.ipynb   # Análise exploratória em Jupyter
+├── requirements.txt              # Dependências Python
+├── .env.example                  # Template de variáveis de ambiente
+├── .env                          # Credenciais locais (não versionado)
 ├── .gitignore
-└── Logo.png                        # Logotipo do dashboard
+├── LICENSE
+└── Logo.png
 ```
 
 ---

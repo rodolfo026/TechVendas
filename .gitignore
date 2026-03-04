@@ -22,6 +22,12 @@ __pycache__/
 app_backup_from_notebook.py
 dados_tratados.csv
 
+# Documentos acadêmicos / internos (não publicar no portfólio)
+apresentacao_completa_projeto.md
+documento_apresentacao_rodolfo.md
+GUIA_RAPIDO_IMPLEMENTACAO.md
+RESUMO_EXECUTIVO_INADIMPLENCIA.md
+
 # PDFs e textos internos
 *.pdf
 *.txt
